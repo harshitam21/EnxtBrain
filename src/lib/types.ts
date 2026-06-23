@@ -1,6 +1,12 @@
 export type DocumentType = "employee" | "project" | "client" | "lead" | "system";
 
-export type BrainField = string | number | string[];
+export type EmployeePayment = {
+  date: string;
+  amount: string;
+  notes: string;
+};
+
+export type BrainField = string | number | string[] | EmployeePayment[];
 
 export type BrainDocument = {
   id: string;

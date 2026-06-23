@@ -3,7 +3,6 @@ import type { BrainDocument } from "./types";
 const today = "2026-06-17";
 
 type SheetEmployee = {
-  serialNo: number;
   name: string;
   dateOfLeaving: string;
   currentSalary: string;
@@ -23,7 +22,6 @@ type SheetEmployee = {
 
 const employees: SheetEmployee[] = [
   {
-    serialNo: 1,
     name: "Saumil Bisht",
     dateOfLeaving: "11/1/2026",
     currentSalary: "",
@@ -41,7 +39,6 @@ const employees: SheetEmployee[] = [
     paidJun5: ""
   },
   {
-    serialNo: 2,
     name: "Subhanshu Thapa",
     dateOfLeaving: "27/03/2026",
     currentSalary: "",
@@ -59,7 +56,6 @@ const employees: SheetEmployee[] = [
     paidJun5: ""
   },
   {
-    serialNo: 3,
     name: "Saurabh Kumar",
     dateOfLeaving: "",
     currentSalary: "25K",
@@ -77,7 +73,6 @@ const employees: SheetEmployee[] = [
     paidJun5: "25000"
   },
   {
-    serialNo: 4,
     name: "Sarabjeet Srivastava",
     dateOfLeaving: "10/04/2026",
     currentSalary: "",
@@ -95,7 +90,6 @@ const employees: SheetEmployee[] = [
     paidJun5: ""
   },
   {
-    serialNo: 5,
     name: "Feroz Khan",
     dateOfLeaving: "09/04/2026",
     currentSalary: "-",
@@ -113,7 +107,6 @@ const employees: SheetEmployee[] = [
     paidJun5: ""
   },
   {
-    serialNo: 6,
     name: "Manya Raghav",
     dateOfLeaving: "24/04/2026",
     currentSalary: "",
@@ -131,7 +124,6 @@ const employees: SheetEmployee[] = [
     paidJun5: ""
   },
   {
-    serialNo: 7,
     name: "Roopraj",
     dateOfLeaving: "13/02/2026",
     currentSalary: "-",
@@ -149,7 +141,6 @@ const employees: SheetEmployee[] = [
     paidJun5: ""
   },
   {
-    serialNo: 8,
     name: "Guneeka Sharma",
     dateOfLeaving: "30/04/2026",
     currentSalary: "",
@@ -167,7 +158,6 @@ const employees: SheetEmployee[] = [
     paidJun5: ""
   },
   {
-    serialNo: 9,
     name: "Paritoshi",
     dateOfLeaving: "",
     currentSalary: "25K",
@@ -185,7 +175,6 @@ const employees: SheetEmployee[] = [
     paidJun5: "15000"
   },
   {
-    serialNo: 10,
     name: "Dhruv",
     dateOfLeaving: "",
     currentSalary: "25K",
@@ -203,7 +192,6 @@ const employees: SheetEmployee[] = [
     paidJun5: "25000"
   },
   {
-    serialNo: 11,
     name: "Anshukiran",
     dateOfLeaving: "",
     currentSalary: "25K",
@@ -221,7 +209,6 @@ const employees: SheetEmployee[] = [
     paidJun5: "25000"
   },
   {
-    serialNo: 12,
     name: "Shashank",
     dateOfLeaving: "",
     currentSalary: "30k",
@@ -239,7 +226,6 @@ const employees: SheetEmployee[] = [
     paidJun5: "30000"
   },
   {
-    serialNo: 13,
     name: "Mayank",
     dateOfLeaving: "",
     currentSalary: "10K",
@@ -257,7 +243,6 @@ const employees: SheetEmployee[] = [
     paidJun5: "6667"
   },
   {
-    serialNo: 14,
     name: "Poras",
     dateOfLeaving: "",
     currentSalary: "10K",
@@ -275,7 +260,6 @@ const employees: SheetEmployee[] = [
     paidJun5: "5000"
   },
   {
-    serialNo: 15,
     name: "Alok",
     dateOfLeaving: "",
     currentSalary: "5K",
@@ -293,7 +277,6 @@ const employees: SheetEmployee[] = [
     paidJun5: ""
   },
   {
-    serialNo: 16,
     name: "Simran",
     dateOfLeaving: "",
     currentSalary: "5K",
@@ -312,8 +295,8 @@ const employees: SheetEmployee[] = [
   }
 ];
 
-const documentUrlBySerial: Record<
-  number,
+const documentUrlByName: Record<
+  string,
   {
     offerLetterUrl: string;
     panCardUrl: string;
@@ -321,97 +304,97 @@ const documentUrlBySerial: Record<
     bankDetailsUrl: string;
   }
 > = {
-  1: {
+  "Saumil Bisht": {
     offerLetterUrl: "https://drive.google.com/file/d/1cATgCrZBKaovCfpQSB_6-t5MN6oa4yqY/view?usp=drivesdk",
     panCardUrl: "https://drive.google.com/file/d/1YUdDQZEBTSlh_vYMcLRScw2_NINB-Rae/view?usp=drivesdk",
     aadhaarCardUrl: "https://drive.google.com/file/d/19ayBWgfFjLUGStuR8rkIOCwYpt92xU9-/view?usp=drivesdk",
     bankDetailsUrl: "https://drive.google.com/file/d/1vV7_sd9IXWBD-y1kTUTMyg-0Bj9vd_fu/view?usp=drivesdk"
   },
-  2: {
+  "Subhanshu Thapa": {
     offerLetterUrl: "https://drive.google.com/file/d/1o527pJJ3_8RW3tSjGplGdAMwdq7011G9/view?usp=drivesdk",
     panCardUrl: "https://drive.google.com/file/d/1CFJ5LX-nwNqLy7brZm4Mm6I6wHrWxoi9/view?usp=drivesdk",
     aadhaarCardUrl: "https://drive.google.com/file/d/1QWMuDfsfLozCmRyV67BEoBYICj9rUgi0/view?usp=drivesdk",
     bankDetailsUrl: "https://drive.google.com/file/d/115qYqQqCXVCK5_VpgxUvfbMAO6BALE3S/view?usp=drivesdk"
   },
-  3: {
+  "Saurabh Kumar": {
     offerLetterUrl: "https://drive.google.com/file/d/1CkM9eiH5rk5NbuWdSTo_6OiXGFb9n05j/view?usp=drivesdk",
     panCardUrl: "https://drive.google.com/file/d/1dB1cY6DCdgk1J0Qa_qdWIPIRLYw0ZDJo/view?usp=sharing",
     aadhaarCardUrl: "https://drive.google.com/file/d/1dB1cY6DCdgk1J0Qa_qdWIPIRLYw0ZDJo/view?usp=sharing",
     bankDetailsUrl: "https://drive.google.com/file/d/1ANY6dpQ5-A1EkTaeCelv70dqjdV59Dr4/view?usp=drive_link"
   },
-  4: {
+  "Sarabjeet Srivastava": {
     offerLetterUrl: "https://drive.google.com/file/d/1mv9yrmtL_3kyJ3LaczMorY0SFlG5vnG0/view?usp=drivesdk",
     panCardUrl: "https://drive.google.com/file/d/1r6l7GpPaZEEW-ky3x-cviaNlQ6CsHnC8/view?usp=sharing",
     aadhaarCardUrl: "https://drive.google.com/file/d/1h82p2lv1zexnqb33OcSAUzWH0gHm_M6d/view?usp=drive_link",
     bankDetailsUrl: "https://drive.google.com/file/d/1u4Uji4m9tc8fOP--UONbgXVDokQKfCbn/view?usp=drive_link"
   },
-  5: {
+  "Feroz Khan": {
     offerLetterUrl: "https://docs.google.com/document/d/19AA_OJJLY_rP9ouTb_iwjQvfDHwhQ4jZ/edit?usp=drive_link&ouid=102715197375878789261&rtpof=true&sd=true",
     panCardUrl: "https://drive.google.com/file/d/1aBUkgHSgeQK77AYOwkSHL7NM3IEa6Ox1/view?usp=sharing",
     aadhaarCardUrl: "https://drive.google.com/file/d/1yDO6ILn0A38po_NJuz34SjH3QVOGfu5N/view?usp=sharing",
     bankDetailsUrl: "https://drive.google.com/file/d/16VMLdxQAew22tn3Vi2qLi875bgLpYbPU/view?usp=sharing"
   },
-  6: {
+  "Manya Raghav": {
     offerLetterUrl: "https://drive.google.com/file/d/1Qkf38w1RzwUJQLnc_NzX6v5617M8Qz2t/view?usp=drive_link",
     panCardUrl: "https://drive.google.com/file/d/1lp0wUeCu6dPfZDY2WrMzyZ6wA-JubB3N/view?usp=drive_link",
     aadhaarCardUrl: "https://drive.google.com/file/d/1PkBqZR6ordHwXQpJ_MAuHwiQLtyOYwUl/view?usp=sharing",
     bankDetailsUrl: "https://drive.google.com/file/d/1hqT5Yf3HAY30rSJiU1TkrTCNCYrFgLnF/view?usp=drive_link"
   },
-  7: {
+  "Roopraj": {
     offerLetterUrl: "https://drive.google.com/file/d/1bvDwWbW7RWmX3oQ5RPL3fAoNL8yhYHJU/view?usp=drive_link",
     panCardUrl: "https://drive.google.com/file/d/1XTp53jNWdxsy3tiygnzT_uNA4KIU6fut/view?usp=drive_link",
     aadhaarCardUrl: "https://drive.google.com/file/d/1n5OaEuT8U7FrqM1Q5NSwcveX871XkEIP/view?usp=drive_link",
     bankDetailsUrl: "https://drive.google.com/file/d/1b3ksiEh5W9cRKi3qj6jNs34GVSnsQN9_/view?usp=drive_link"
   },
-  8: {
+  "Guneeka Sharma": {
     offerLetterUrl: "https://drive.google.com/file/d/14BKwpbkLd1dniUxkxDctgP0P-kN23klN/view?usp=drive_link",
     panCardUrl: "https://drive.google.com/file/d/10ouIinBQVDKrVXLTz9Dz0K4i8GFudZbX/view?usp=drive_link",
     aadhaarCardUrl: "https://drive.google.com/file/d/13nkuS3GObUffLXtt4NCZc05xSAA0yaef/view?usp=drive_link",
     bankDetailsUrl: "https://drive.google.com/file/d/1kkb7cgLlmDCI05Apb9qvzYFL5Xp03Dr3/view?usp=drive_link"
   },
-  9: {
+  "Paritoshi": {
     offerLetterUrl: "https://drive.google.com/file/d/1sYyjd3nSph6X1eZtFKgM8ECOf8SjYIT8/view?usp=drive_link",
     panCardUrl: "https://drive.google.com/file/d/1QYnhsM5x__8yYHLjtTC8GOn3jUe1oXfr/view?usp=drive_link",
     aadhaarCardUrl: "https://drive.google.com/file/d/1QYnhsM5x__8yYHLjtTC8GOn3jUe1oXfr/view?usp=drive_link",
     bankDetailsUrl: ""
   },
-  10: {
+  "Dhruv": {
     offerLetterUrl: "https://drive.google.com/file/d/139KA0zBYKVVXmlr56jIGlLW8xxi7cYAS/view?usp=drive_link",
     panCardUrl: "https://drive.google.com/file/d/1OgMKJ4qJdf4ZwX9eU6CzsT_hERFnhG2w/view?usp=drive_link",
     aadhaarCardUrl: "https://drive.google.com/file/d/1f28vx5D_fxx2tmVkt5EV-g0YnztaH4IJ/view?usp=drive_link",
     bankDetailsUrl: ""
   },
-  11: {
+  "Anshukiran": {
     offerLetterUrl: "https://drive.google.com/file/d/13BYM3VMB2Ud-cnbsa0ZkYPkeihHS6C5F/view?usp=drive_link",
     panCardUrl: "https://drive.google.com/file/d/1r9vw-xXHJ6sUZSSmjoDV5lbYHc2uKFmL/view?usp=drive_link",
     aadhaarCardUrl: "https://drive.google.com/file/d/1e0QkhjBjuwVOoMqn-PR0AnzkPotdGggn/view?usp=drive_link",
     bankDetailsUrl: ""
   },
-  12: {
+  "Shashank": {
     offerLetterUrl: "",
     panCardUrl: "https://drive.google.com/file/d/1cg7Ni0lWsv8yEvf36M0k3PWxJBgWwnPC/view?usp=drive_link",
     aadhaarCardUrl: "https://drive.google.com/file/d/1dVA45igRdiY6-KWtZtldsJZTmGFCB1wf/view?usp=drive_link",
     bankDetailsUrl: ""
   },
-  13: {
+  "Mayank": {
     offerLetterUrl: "",
     panCardUrl: "https://drive.google.com/file/d/1t1j4Pn786qBs4b3YXdulxhVgeDZfTDXO/view?usp=drive_link",
     aadhaarCardUrl: "https://drive.google.com/file/d/1X2nB8AcNlnTiWZf0TvVT0XhT2NV33Vgu/view?usp=drive_link",
     bankDetailsUrl: ""
   },
-  14: {
+  "Poras": {
     offerLetterUrl: "",
     panCardUrl: "https://drive.google.com/file/d/1kGLXyOMSrxrI8YE2gUJGfx8TpWxtEEBI/view?usp=drive_link",
     aadhaarCardUrl: "https://drive.google.com/file/d/1RCXFraJtXTxrV3behaUM_daBMym_kzhx/view?usp=drive_link",
     bankDetailsUrl: ""
   },
-  15: {
+  "Alok": {
     offerLetterUrl: "",
     panCardUrl: "https://drive.google.com/file/d/1rx0DkU19rzXqiKhBYDnkTJn81a1vrY-y/view?usp=drive_link",
     aadhaarCardUrl: "https://drive.google.com/file/d/191cBFOHqeWTw5Xf6h1Fs7RnlHWzjEvUJ/view?usp=drive_link",
     bankDetailsUrl: "https://drive.google.com/file/d/1z_mOFCMbXFLr6UD7X0-dvmqYtL06_MZ-/view?usp=drive_link"
   },
-  16: {
+  "Simran": {
     offerLetterUrl: "",
     panCardUrl: "https://drive.google.com/file/d/1aNTdOQDOd9KxjzALd3AWsUIKQsc9cM__/view?usp=drive_link",
     aadhaarCardUrl: "https://drive.google.com/file/d/1kp8CoTQpGo8DXag_Q7nTfGhLJb5kmS1h/view?usp=drive_link",
@@ -440,16 +423,34 @@ const bestSalary = (employee: SheetEmployee) =>
 
 const hasDocument = (value: string) => (value.trim() ? "Available" : "Missing");
 
+const createPaymentHistory = (employee: SheetEmployee) => {
+  const history: { date: string; amount: string; notes: string }[] = [];
+  if (employee.paidJun5) history.push({ date: "2026-06-05", amount: employee.paidJun5, notes: "June 5/6 payment" });
+  if (employee.paidMay7) history.push({ date: "2026-05-07", amount: employee.paidMay7, notes: "May 7 payment" });
+  if (employee.paidMarch7) history.push({ date: "2026-03-07", amount: employee.paidMarch7, notes: "March 7 payment" });
+  if (employee.paidFebStipend) history.push({ date: "2026-02-28", amount: employee.paidFebStipend, notes: "February stipend" });
+  if (employee.paidFeb3) history.push({ date: "2026-02-03", amount: employee.paidFeb3, notes: "February 3 payment" });
+
+  return history;
+};
+
+const paymentHistoryToText = (history: { date: string; amount: string; notes: string }[]) => {
+  if (history.length === 0) return "No payment records found.";
+
+  return history.map((p) => `- ${p.notes} (${p.date}): ${p.amount}`).join("\n");
+};
+
 const employeeToDocument = (employee: SheetEmployee): BrainDocument => {
   const status = employee.dateOfLeaving ? "Exited" : "Active";
   const salary = bestSalary(employee);
   const slug = employee.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-  const urls = documentUrlBySerial[employee.serialNo] ?? {
+  const urls = documentUrlByName[employee.name] ?? {
     offerLetterUrl: "",
     panCardUrl: "",
     aadhaarCardUrl: "",
     bankDetailsUrl: ""
   };
+  const paymentHistory = createPaymentHistory(employee);
 
   return {
     id: `emp-${slug}`,
@@ -460,7 +461,6 @@ const employeeToDocument = (employee: SheetEmployee): BrainDocument => {
     updatedAt: today,
     tags: ["employee", status, "google-sheet-import"],
     fields: {
-      serialNo: employee.serialNo,
       name: employee.name,
       role: "Team Member",
       department: "Inext AI",
@@ -484,11 +484,7 @@ const employeeToDocument = (employee: SheetEmployee): BrainDocument => {
       panCardStatus: hasDocument(employee.panCard),
       aadhaarCardStatus: hasDocument(employee.aadhaarCard),
       bankDetailsStatus: hasDocument(employee.bankDetails),
-      paidFebStipend: employee.paidFebStipend,
-      paidMarch7: employee.paidMarch7,
-      paidFeb3: employee.paidFeb3,
-      paidMay7: employee.paidMay7,
-      paidJun5: employee.paidJun5
+      paymentHistory
     },
     body: `Imported employee record from the Inext AI Google Sheet.
 
@@ -507,11 +503,7 @@ Document references:
 - Bank details: ${employee.bankDetails ? "Captured from sheet - protected field" : "Missing"}
 
 Payment records:
-- Paid Feb stipend: ${employee.paidFebStipend || "Blank"}
-- Paid March 7: ${employee.paidMarch7 || "Blank"}
-- Paid Feb 3: ${employee.paidFeb3 || "Blank"}
-- Paid May 7: ${employee.paidMay7 || "Blank"}
-- Paid Jun 5/6: ${employee.paidJun5 || "Blank"}`
+${paymentHistoryToText(paymentHistory)}`
   };
 };
 

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-import type { BrainDocument, ChatMessage } from "../../../lib/types";
+import type { BrainDocument, ChatMessage, EmployeePayment, DocumentType } from "../../../lib/types";
+import { searchDocuments } from "../../../lib/pinecone";
 
 type BrainChatRequest = {
   prompt?: string;
@@ -25,7 +27,8 @@ const compactDocument = (document: BrainDocument) => {
       dateOfLeaving: fieldText(document, "dateOfLeaving"),
       panCardStatus: fieldText(document, "panCardStatus"),
       aadhaarCardStatus: fieldText(document, "aadhaarCardStatus"),
-      bankDetailsStatus: fieldText(document, "bankDetailsStatus")
+      bankDetailsStatus: fieldText(document, "bankDetailsStatus"),
+      paymentHistory: document.fields.paymentHistory as EmployeePayment[] | undefined
     };
   }
 
@@ -112,93 +115,128 @@ export async function POST(request: NextRequest) {
   const prompt = body.prompt?.trim();
   const documents = body.documents ?? [];
 
+  // Prefer an explicit RAG model, fall back to configured Gemini model, then default.
+  const mainModel = process.env.RAG_MODEL || process.env.GEMINI_MODEL || "gemini-2.5-flash";
+  const fallbackModel = process.env.FALLBACK_RAG_MODEL || "gemini-2.5-flash";
+
+  // Check if it is high traffic hours: Mon-Fri, 9:00 AM to 6:00 PM
+  const isHighTrafficHours = (): boolean => {
+    const now = new Date();
+    const day = now.getDay(); // 0 = Sunday, 6 = Saturday
+    const hour = now.getHours(); // 0 to 23 (local time)
+    return day >= 1 && day <= 5 && hour >= 9 && hour < 18;
+  };
+
+  const rawModel = fallbackModel;
+  console.log(`[RAG Model] Fallback model forced for chat: ${rawModel}`);
+
+  // Some Gemini variants (like "-lite") are not supported by the v1beta generateContent
+  // endpoint. Map common "lite" names to their full counterparts as a safe fallback.
+  const sanitizeModelForGenerateContent = (m: string) => {
+    if (!m) return m;
+    // If the model name contains 'lite' (e.g. gemini-3.5-flash-lite), prefer the non-lite variant
+    // which is typically supported for generateContent.
+    if (/\b(lite)\b/i.test(m)) {
+      return m.replace(/-?lite\b/i, "");
+    }
+    return m;
+  };
+
+  const model = sanitizeModelForGenerateContent(rawModel);
+
   if (!prompt) {
     return NextResponse.json({ error: "Prompt is required." }, { status: 400 });
   }
 
-  const companyMemory = documents.map(compactDocument);
+  const isLongListRequest = /\b(all|list|show|export|contacts?|everyone|complete)\b/i.test(prompt);
+  let relevantDocs = documents;
+
+  if (!isLongListRequest) {
+    try {
+      const matches = await searchDocuments(prompt, 12);
+      const matchIds = new Set(matches.map((m) => m.id));
+      relevantDocs = documents.filter((doc) => matchIds.has(doc.id));
+
+      if (relevantDocs.length === 0 && matches.length > 0) {
+        relevantDocs = matches.map((m) => ({
+          id: m.id,
+          type: m.type as DocumentType,
+          title: m.title,
+          status: m.status,
+          owner: m.owner,
+          tags: m.tags.split(", "),
+          body: m.body,
+          fields: {},
+          updatedAt: m.updatedAt
+        }));
+      }
+    } catch (err) {
+      console.error("Pinecone search failed, falling back to full memory:", err);
+    }
+  }
+
+  const companyMemory = relevantDocs.map(compactDocument);
   const recentMessages = (body.messages ?? []).slice(-8).map((message) => ({
     role: message.role,
     content: message.content
   }));
-  const isLongListRequest = /\b(all|list|show|export|contacts?|everyone|complete)\b/i.test(prompt);
-
-  const model = process.env.GEMINI_MODEL ?? "gemini-3.5-flash";
-  let apiResponse: Response;
-
   try {
-    apiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-      {
-        method: "POST",
-        headers: {
-          "x-goog-api-key": apiKey,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          system_instruction: {
-            parts: [
-              {
-                text:
-                  "You are Enxt Brain, the private AI company brain for Inext AI's founder. Answer only from the provided company memory. Be direct, operational, and specific. When asked for lists, compute from the JSON fields and return the complete list. For CRM contact lists, format each item as `Name - Company - Stage`, one item per line, with no extra commentary after the list. For employee salary questions, use monthlySalaryInr and format each result as `Name - salary INR - status`, one employee per line. Do not use tables. Do not add unfinished parentheses. If there are no matches, say so clearly. If the founder asks to edit, move, add, or update records, explain the intended change clearly and ask for approval unless the portal has already provided an explicit update action. Never invent employees, salaries, leads, clients, or project facts that are not in memory."
-              }
-            ]
-          },
-          contents: [
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const modelInstance = genAI.getGenerativeModel({
+      model: model,
+      systemInstruction: "You are Enxt Brain, the private AI company brain for Inext AI's founder. Answer only from the provided company memory. Be direct, operational, and specific. When asked for lists, compute from the JSON fields and return the complete list. For CRM contact lists, format each item as `Name - Company - Stage`, one item per line, with no extra commentary after the list. For employee salary questions, use monthlySalaryInr and format each result as `Name - salary INR - status`, one employee per line. Do not use tables. Do not add unfinished parentheses. If there are no matches, say so clearly. If the founder asks to edit, move, add, or update records, explain the intended change clearly and ask for approval unless the portal has already provided an explicit update action. Never invent employees, salaries, leads, clients, or project facts that are not in memory."
+    });
+
+    const result = await modelInstance.generateContent({
+      contents: [
+        {
+          role: "user",
+          parts: [
             {
-              role: "user",
-              parts: [
-                {
-                  text: JSON.stringify({
-                    founderQuestion: prompt,
-                    writeMode: Boolean(body.writeMode),
-                    recentMessages,
-                    companyMemory
-                  })
-                }
-              ]
+              text: JSON.stringify({
+                founderQuestion: prompt,
+                writeMode: Boolean(body.writeMode),
+                recentMessages,
+                companyMemory
+              })
             }
-          ],
-          generationConfig: {
-            maxOutputTokens: isLongListRequest ? 8192 : 2048,
-            temperature: 0.2,
-            thinkingConfig: {
-              thinkingLevel: isLongListRequest ? "minimal" : "low"
-            }
+          ]
+        }
+      ],
+      generationConfig: {
+        maxOutputTokens: isLongListRequest ? 8192 : 2048,
+        temperature: 0.2,
+        ...(model.includes("pro") ? {
+          // @ts-ignore
+          thinkingConfig: {
+            thinkingLevel: isLongListRequest ? "minimal" : "low"
           }
-        })
+        } : {})
       }
-    );
-  } catch {
+    });
+
+    const response = result.response;
+    const answer = response.text()?.trim() || "";
+    
+    // Attempt to access candidate finishReason if present
+    // @ts-ignore
+    const finishReason = response.candidates?.[0]?.finishReason;
+
+    return NextResponse.json({
+      answer:
+        finishReason === "MAX_TOKENS"
+          ? `${answer}\n\nThe model stopped because it hit the output limit. Ask me to continue if you need the rest.`
+          : answer || "I could not produce an answer from the current company memory."
+    });
+  } catch (error: any) {
+    console.error("Gemini SDK request error:", error);
     return NextResponse.json(
       {
         error:
-          "Gemini API request could not reach Google. Check network access for the Next.js server and try again."
-      },
-      { status: 502 }
-    );
-  }
-
-  const payload = await apiResponse.json();
-
-  if (!apiResponse.ok) {
-    return NextResponse.json(
-      {
-        error:
-          payload?.error?.message ??
+          error?.message ??
           "Gemini could not answer right now. Check your API key, model access, and server logs."
       },
-      { status: apiResponse.status }
+      { status: 500 }
     );
   }
-
-  const answer = extractGeminiText(payload).trim();
-  const finishReason = payload?.candidates?.[0]?.finishReason;
-
-  return NextResponse.json({
-    answer:
-      finishReason === "MAX_TOKENS"
-        ? `${answer}\n\nThe model stopped because it hit the output limit. Ask me to continue if you need the rest.`
-        : answer || "I could not produce an answer from the current company memory."
-  });
 }
