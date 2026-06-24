@@ -10,8 +10,8 @@
   --line-strong: #cbd5e1;
   --nav: #0f172a;
   --nav-soft: #1e293b;
-  --green: #4f46e5; /* indigo */
-  --green-soft: #e0e7ff; /* indigo-soft */
+  --purple: #7c3aed; /* violet */
+  --purple-soft: #f5f3ff; /* violet-soft */
   --amber: #d97706;
   --amber-soft: #fef3c7;
   --teal: #0d9488;
@@ -116,9 +116,9 @@ button {
 .brand-mark,
 .metric-icon {
   align-items: center;
-  background: #d9f7df;
+  background: var(--green-soft);
   border-radius: 8px;
-  color: #0d5d3d;
+  color: var(--purple);
   display: inline-flex;
   flex: 0 0 auto;
   height: 42px;
@@ -353,7 +353,7 @@ button {
   left: 0;
   width: 4px;
   height: 100%;
-  background: linear-gradient(180deg, var(--green), var(--teal));
+  background: linear-gradient(180deg, var(--violet), var(--teal));
 }
 
 .metric-card span,
@@ -449,10 +449,10 @@ button {
 }
 
 .value-chip {
-  background: #eef7f4;
+  background: var(--green-soft);
   border: 1px solid #cce4dc;
   border-radius: 999px;
-  color: #0b5d50;
+  color: var(--purple);
   flex: 0 0 auto;
   font-size: 0.82rem;
   font-weight: 700;
@@ -472,9 +472,9 @@ button {
   white-space: nowrap;
 }
 
-.status-badge.green {
-  background: var(--green-soft);
-  color: var(--green);
+.status-badge.purple {
+  background: var(--purple-soft);
+  color: var(--purple);
 }
 
 .status-badge.amber {
@@ -1460,7 +1460,7 @@ td span {
 }
 
 .primary-button {
-  background: var(--green);
+  background: var(--violet);
   color: #ffffff;
   min-height: 40px;
   padding: 0 14px;
@@ -1490,7 +1490,7 @@ td span {
 }
 
 .toggle input {
-  accent-color: var(--green);
+  accent-color: var(--violet);
 }
 
 .message-list {
@@ -1891,15 +1891,15 @@ td span {
   position: relative;
 }
 
-.health-pulse.green {
-  background-color: var(--green);
+.health-pulse.purple {
+  background-color: var(--purple);
 }
-.health-pulse.green::after {
+.health-pulse.purple::after {
   content: '';
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
   border-radius: 50%;
-  border: 2px solid var(--green);
+  border: 2px solid var(--purple);
   animation: pulse-ring 2s infinite ease-in-out;
   opacity: 0;
 }

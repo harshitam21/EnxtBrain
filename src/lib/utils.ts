@@ -25,9 +25,9 @@ export const getProjectDeliveryStatus = (project: BrainDocument) => {
   return "Not Yet Started";
 };
 
-export const getProjectStatusTone = (status: string): "green" | "amber" | "neutral" => {
+export const getProjectStatusTone = (status: string): "purple" | "amber" | "neutral" => {
   if (status === "Completed") {
-    return "green";
+    return "purple";
   }
 
   if (status === "In Progress") {

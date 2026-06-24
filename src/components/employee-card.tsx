@@ -4,9 +4,21 @@ import { asText, asNumber, formatCurrency, presentLabel, paymentHistoryLines, pa
 import type { BrainDocument, EmployeePayment } from "../lib/types";
 import { Pencil } from "lucide-react";
 
-function StatusBadge({ children, tone }: { children: React.ReactNode; tone: "green" | "amber" | "neutral" }) {
+function StatusBadge({ children, tone }: { children: React.ReactNode; tone: "purple" | "amber" | "neutral" }) {
   return <span className={`status-badge ${tone}`}>{children}</span>;
 }
+
+export const getProjectStatusTone = (status: string): "purple" | "amber" | "neutral" => {
+  if (status === "Completed") {
+    return "purple";
+  }
+
+  if (status === "In Progress") {
+    return "purple";
+  }
+
+  return "neutral";
+};
 
 export default function EmployeeCard({
   employee,
@@ -27,7 +39,7 @@ export default function EmployeeCard({
           <strong>{name}</strong>
           <span style={{ display: "block", fontSize: "0.8rem", color: "var(--muted)", marginTop: "2px" }}>{designation}</span>
         </div>
-        <StatusBadge tone={asText(employee, "status") === "Exited" ? "amber" : "green"}>
+        <StatusBadge tone={asText(employee, "status") === "Exited" ? "amber" : "purple"}>
           {asText(employee, "status")}
         </StatusBadge>
       </div>

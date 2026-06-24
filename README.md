@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # EnxtBrain
 
 EnxtBrain is a high-fidelity Next.js operational workspace and founder command dashboard. It functions as a document-native CRM and repository memory manager for tracking employees, AI projects, clients, and leads. 
@@ -68,3 +69,6 @@ npx vercel --scope harshitam21s-projects --yes
 # Promote to production
 npx vercel --prod --scope harshitam21s-projects --yes
 ```
+=======
+# EnxtBrain
+>>>>>>> 8dab5d1c93583d5c0e149b74bba5f63ffb1c74d4

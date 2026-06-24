@@ -14,9 +14,11 @@
     "firebase-admin": "^14.0.0",
     "lucide-react": "^0.468.0",
     "next": "^14.2.23",
+    "pino": "^10.3.1",
     "react": "^18.3.1",
     "react-datepicker": "^4.25.0",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^20.17.12",

@@ -127,8 +127,8 @@ export async function POST(request: NextRequest) {
     return day >= 1 && day <= 5 && hour >= 9 && hour < 18;
   };
 
-  const rawModel = fallbackModel;
-  console.log(`[RAG Model] Fallback model forced for chat: ${rawModel}`);
+  const rawModel = isHighTrafficHours() ? fallbackModel : mainModel;
+  console.log(`[RAG Model] Selected model: ${rawModel}`);
 
   // Some Gemini variants (like "-lite") are not supported by the v1beta generateContent
   // endpoint. Map common "lite" names to their full counterparts as a safe fallback.

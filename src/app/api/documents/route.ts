@@ -4,6 +4,7 @@ import { getFirestoreClient } from "../../../lib/firebase-admin";
 import { upsertDocumentBatch, deleteDocumentVectors } from "../../../lib/pinecone";
 import type { BrainDocument } from "../../../lib/types";
 import { encrypt, decrypt } from "../../../lib/encryption";
+import { withAuth } from "../../../lib/auth";
 
 const getDocumentsCollection = (firestore: any) => firestore.collection("brainDocuments");
 
@@ -122,11 +123,10 @@ const isDocumentEqual = (d1: BrainDocument, d2: BrainDocument): boolean => {
   return areFieldsEqual(d1.fields || {}, d2.fields || {});
 };
 
-export async function GET(request: NextRequest) {
+export const GET = withAuth(async (request: NextRequest, _res: any, _user) => {
   try {
     const resyncParam = request.nextUrl.searchParams.get("resync");
-
-    // If `?resync=true` is provided, fetch all docs and re-index in Pinecone.
+    // If `?resync=true` is provided, fetch all docs and re‑index in Pinecone.
     if (resyncParam === "true") {
       const documents = await getStoredDocuments();
       const sanitizedDocs = documents.map(redactDocumentForPinecone);
@@ -147,9 +147,9 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+}, ["admin", "founder"]);
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request: NextRequest, _res: any, _user) => {
   const body = (await request.json()) as { documents?: BrainDocument[] };
 
   if (!Array.isArray(body.documents)) {
@@ -240,7 +240,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function DELETE(request: NextRequest) {
+export const DELETE = withAuth(async (request: NextRequest, _res: any, _user) => {
   const body = (await request.json()) as { documentIds?: string[] };
   const documentIds = body.documentIds;
 

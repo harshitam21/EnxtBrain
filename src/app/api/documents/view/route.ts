@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getFirestoreClient } from "../../../../lib/firebase-admin";
 import { decrypt } from "../../../../lib/encryption";
+import { withAuth } from "../../../../lib/auth";
 
-export async function GET(request: NextRequest) {
+export const GET = withAuth(async (request: NextRequest, _res: any, _user) => {
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
   const field = searchParams.get("field");
@@ -53,4 +54,4 @@ export async function GET(request: NextRequest) {
     console.error("View redirect error:", error);
     return NextResponse.json({ error: "Internal server error." }, { status: 500 });
   }
-}
+}, ["admin", "founder"]);

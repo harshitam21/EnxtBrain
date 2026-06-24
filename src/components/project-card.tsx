@@ -4,7 +4,7 @@ import { asText, asNumber, formatCurrency, getProjectDeliveryStatus, getProjectS
 import { BrainDocument } from "../lib/types";
 import { FileText } from "lucide-react";
 
-function StatusBadge({ children, tone }: { children: React.ReactNode; tone: "green" | "amber" | "neutral" }) {
+function StatusBadge({ children, tone }: { children: React.ReactNode; tone: "purple" | "amber" | "neutral" }) {
   return <span className={`status-badge ${tone}`}>{children}</span>;
 }
 
@@ -54,7 +54,7 @@ export default function ProjectCard({
             <span style={{ fontSize: "0.82rem", fontWeight: 600 }}>{progress}%</span>
             <div className="progress-bar-container" aria-label={`${project.title} progress`}>
               <div
-                className={`progress-bar-fill ${progress < 35 ? "red" : progress < 75 ? "amber" : ""}`}
+                className={`progress-bar-fill ${progress < 35 ? "red" : progress < 75 ? "amber" : "purple"}`}
                 style={{ width: `${progress}%` }}
               />
             </div>
