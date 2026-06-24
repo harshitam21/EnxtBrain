@@ -1,13 +1,12 @@
-<<<<<<< HEAD
 # EnxtBrain
 
 EnxtBrain is a high-fidelity Next.js operational workspace and founder command dashboard. It functions as a document-native CRM and repository memory manager for tracking employees, AI projects, clients, and leads. 
 
 It integrates search indexing, AES-256-CBC field encryption, Firestore data synchronization, and a grounded AI assistant powered by the Google Gemini API.
-
+Vercel Link: https://enxt-brain.vercel.app/
 ---
 
-## 🚀 Key Features
+## Key Features
 
 *   **Founder Command Dashboard**: Key high-level operational metric cards (employee payroll, project budgets, open pipeline value) with watchlist sections for tracking at-risk projects and active leads.
 *   **Employee Registry**: Renders department groups, monthly payroll tracking, and verified document vaults (Offer Letters, PAN, Aadhaar Cards) with dynamic payment history reconstruction from import sheets.
@@ -18,7 +17,7 @@ It integrates search indexing, AES-256-CBC field encryption, Firestore data sync
 
 ---
 
-## 🛠️ Technology Stack
+## Technology Stack
 
 *   **Framework**: Next.js (App Router) + React
 *   **Database**: Google Cloud Firestore (Firebase Admin SDK)
@@ -28,7 +27,7 @@ It integrates search indexing, AES-256-CBC field encryption, Firestore data sync
 
 ---
 
-## ⚙️ Local Setup & Configuration
+## Local Setup & Configuration
 
 ### 1. Environment Variables
 Create a `.env.local` file in the root directory:
@@ -58,7 +57,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 
-## ☁️ Deployment
+## Deployment
 
 This project is optimized for deployment on **Vercel**:
 
@@ -69,6 +68,4 @@ npx vercel --scope harshitam21s-projects --yes
 # Promote to production
 npx vercel --prod --scope harshitam21s-projects --yes
 ```
-=======
-# EnxtBrain
->>>>>>> 8dab5d1c93583d5c0e149b74bba5f63ffb1c74d4
+
