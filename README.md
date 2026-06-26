@@ -2,10 +2,11 @@
 
 EnxtBrain is a high-fidelity Next.js operational workspace and founder command dashboard. It functions as a document-native CRM and repository memory manager for tracking employees, AI projects, clients, and leads.
 
-Vercel Link: https://enxt-brain.vercel.app/
+Vercel Link:  https://enxt-brain.vercel.app
 
 It integrates search indexing, AES-256-CBC field encryption, Firestore data synchronization, and a grounded AI assistant powered by the Google Gemini API.
 ---
+![Uploading image.png…]()
 
 ## Key Features
 
