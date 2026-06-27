@@ -6,7 +6,8 @@ Vercel Link:  https://enxt-brain.vercel.app
 
 It integrates search indexing, AES-256-CBC field encryption, Firestore data synchronization, and a grounded AI assistant powered by the Google Gemini API.
 ---
-<img width="1884" height="838" alt="image" src="https://github.com/user-attachments/assets/a0943d12-8cd8-40fe-94ae-3ec69b475c73" />
+<img width="1819" height="851" alt="{4CA39EBB-80AD-405D-8B0C-E83EE6AEA7E5}" src="https://github.com/user-attachments/assets/fbdb9537-6c7e-4370-a371-c05802dac109" />
+
 
 
 ## Key Features
