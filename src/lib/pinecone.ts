@@ -83,10 +83,7 @@ export async function getIndex(): Promise<PineconeBrainIndex> {
     }
   }
 
-  pineconeIndex = client.index<PineconeBrainMetadata>({
-    name: indexName,
-    host: PINECONE_HOST
-  });
+  pineconeIndex = client.index<PineconeBrainMetadata>(indexName);
   return pineconeIndex;
 }
 

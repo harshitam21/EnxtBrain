@@ -35,6 +35,89 @@ export function decrypt(encryptedText: string): string {
     return decrypted;
   } catch (error) {
     console.error("Decryption failed:", error);
-    return encryptedText; // Fallback to original text if decryption fails
+    return ""; // Return empty string on decryption failure (prevents hex leak in UI)
   }
 }
+
+// Functions for handling BrainDocument encryption/redaction
+
+/**
+ * Encrypt specified fields of a BrainDocument.
+ */
+export const encryptDocumentFields = (doc: import("./types").BrainDocument): import("./types").BrainDocument => {
+  // panCard / aadhaarCard are human-readable filenames — only encrypt truly sensitive fields.
+  const ENCRYPT_FIELDS = [
+    "bankDetails",
+    "panCardUrl",
+    "aadhaarCardUrl",
+    "bankDetailsUrl",
+    "offerLetterUrl",
+  ];
+  if (doc.fields) {
+    const fields = { ...doc.fields };
+    for (const key of ENCRYPT_FIELDS) {
+      if (fields[key] && typeof fields[key] === "string" && fields[key] !== "" && fields[key] !== "[PROTECTED]") {
+        fields[key] = encrypt(fields[key] as string);
+      }
+    }
+    return { ...doc, fields };
+  }
+  return doc;
+};
+
+/**
+ * Decrypt encrypted fields of a BrainDocument.
+ * Includes panCard / aadhaarCard to clean up old encrypted values already in Firestore.
+ */
+export const decryptDocumentFields = (doc: import("./types").BrainDocument): import("./types").BrainDocument => {
+  const DECRYPT_FIELDS = [
+    "panCard",
+    "aadhaarCard",
+    "bankDetails",
+    "panCardUrl",
+    "aadhaarCardUrl",
+    "bankDetailsUrl",
+    "offerLetterUrl",
+  ];
+  if (doc.fields) {
+    const fields = { ...doc.fields };
+    for (const key of DECRYPT_FIELDS) {
+      if (fields[key] && typeof fields[key] === "string") {
+        fields[key] = decrypt(fields[key] as string);
+      }
+    }
+    return { ...doc, fields };
+  }
+  return doc;
+};
+
+/**
+ * Redact sensitive fields for Pinecone indexing.
+ */
+export const redactDocumentForPinecone = (doc: import("./types").BrainDocument): import("./types").BrainDocument => {
+  const ENCRYPTED_FIELDS = [
+    "panCard",
+    "aadhaarCard",
+    "bankDetails",
+    "panCardUrl",
+    "aadhaarCardUrl",
+    "bankDetailsUrl",
+    "offerLetterUrl",
+  ];
+  const cleanFields = { ...doc.fields };
+  ENCRYPTED_FIELDS.forEach((key) => {
+    if (cleanFields[key] && cleanFields[key] !== "") {
+      cleanFields[key] = "[REDACTED]";
+    }
+  });
+
+  // Redact in body as well (same logic as documents route)
+  let cleanBody = doc.body;
+  ENCRYPTED_FIELDS.forEach((key) => {
+    const labelPattern = key.replace(/([A-Z])/g, " $1").trim();
+    const regex = new RegExp(`^\\s*(${key}|${labelPattern})\\s*[:\\-]\\s*.+$`, "gim");
+    cleanBody = cleanBody.replace(regex, "$1: [REDACTED]");
+  });
+
+  return { ...doc, fields: cleanFields, body: cleanBody };
+};

@@ -24,6 +24,7 @@ import {
   SquareKanban,
   Trash2,
   Users,
+  Lock,
   X
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -193,17 +194,13 @@ const parseDocumentFieldsFromBody = (document: BrainDocument, body: string) => {
     if (values["current salary"]) parsed.currentSalaryRaw = values["current salary"];
     if (values["date of joining"]) parsed.dateOfJoining = values["date of joining"];
     if (values["date of leaving"]) parsed.dateOfLeaving = values["date of leaving"];
-    if (values["offer letter"]) parsed.offerLetter = values["offer letter"];
-    if (values["offer letter url"]) parsed.offerLetterUrl = values["offer letter url"];
-    if (values["pan card"]) parsed.panCard = values["pan card"];
-    if (values["pan card url"]) parsed.panCardUrl = values["pan card url"];
-    if (values["aadhaar card"]) parsed.aadhaarCard = values["aadhaar card"];
-    if (values["aadhaar card url"]) parsed.aadhaarCardUrl = values["aadhaar card url"];
-    if (values["bank details"]) parsed.bankDetails = values["bank details"];
-    if (values["bank details url"]) parsed.bankDetailsUrl = values["bank details url"];
     if (values["communication status"]) parsed.communicationStatus = values["communication status"];
     if (values["next steps"]) parsed.nextSteps = values["next steps"];
     if (values.deadline) parsed.deadline = values.deadline;
+    // NOTE: panCard, aadhaarCard, bankDetails and their URL fields are intentionally
+    // excluded here — they must NEVER be parsed from body text because Firestore
+    // bodies may contain stale encrypted hex values that would override the properly
+    // decrypted field values. These fields are managed exclusively via the edit form.
   }
 
   if (document.type === "project") {
@@ -242,7 +239,7 @@ const parseDocumentFieldsFromBody = (document: BrainDocument, body: string) => {
   return parsed;
 };
 const removeStructuredBodySection = (body: string) => {
-  const marker = "\n---\n";
+  const marker = "---";
   const markerIndex = body.indexOf(marker);
   return markerIndex === -1 ? body.trim() : body.slice(0, markerIndex).trim();
 };
@@ -251,20 +248,16 @@ const buildStructuredBody = (document: BrainDocument, body: string, fields: Reco
   const sectionLines: string[] = [];
 
   if (document.type === "employee") {
+    // Only write non-sensitive fields into the body text.
+    // panCard, aadhaarCard, bankDetails and their URL fields are excluded because
+    // Firestore stores them encrypted — writing encrypted hex into the body text
+    // caused applyDocumentBodyUpdates to re-read encrypted values back as field values.
     const keys: Array<[string, string]> = [
       ["name", "Name"],
       ["status", "Status"],
       ["currentSalaryRaw", "Salary"],
       ["dateOfJoining", "Date of Joining"],
       ["dateOfLeaving", "Date of Leaving"],
-      ["offerLetter", "Offer Letter"],
-      ["offerLetterUrl", "Offer Letter URL"],
-      ["panCard", "PAN Card"],
-      ["panCardUrl", "PAN Card URL"],
-      ["aadhaarCard", "Aadhaar Card"],
-      ["aadhaarCardUrl", "Aadhaar Card URL"],
-      ["bankDetails", "Bank Details"],
-      ["bankDetailsUrl", "Bank Details URL"],
       ["communicationStatus", "Communication Status"],
       ["nextSteps", "Next Steps"],
       ["deadline", "Deadline"]
@@ -289,12 +282,7 @@ const buildStructuredBody = (document: BrainDocument, body: string, fields: Reco
       ["dueDate", "Due Date"],
       ["budgetInr", "Budget INR"],
       ["progress", "Progress"],
-      ["risk", "Risk"],
-      ["objective", "Objective"],
-      ["scope", "Scope"],
-      ["currentStatus", "Current Status"],
-      ["successMetric", "Success Metric"],
-      ["dataSources", "Data Sources"]
+      ["risk", "Risk"]
     ];
 
     for (const [fieldKey, label] of keys) {
@@ -372,10 +360,10 @@ const applyDocumentBodyUpdates = (
       document.type === "employee"
         ? `${String(updatedFields.name ?? asText(document, "name"))} - ${String(updatedFields.status ?? asText(document, "status"))} Employee`
         : document.type === "project"
-        ? String(updatedFields.title ?? document.title)
-        : document.type === "lead"
-        ? String(updatedFields.company ?? document.title)
-        : document.title,
+          ? String(updatedFields.title ?? document.title)
+          : document.type === "lead"
+            ? String(updatedFields.company ?? document.title)
+            : document.title,
     status: document.type === "project" || document.type === "lead" ? String(updatedFields.status ?? document.status) : String(updatedFields.status ?? document.status),
     fields: updatedFields,
     body: buildStructuredBody(document, body, updatedFields),
@@ -587,55 +575,57 @@ export default function EnxtBrainApp() {
   const [syncStatus, setSyncStatus] = useState<"synced" | "syncing" | "error">("synced");
   const [retryCount, setRetryCount] = useState(0);
 
+  const fetchDocuments = async () => {
+    try {
+      const response = await fetch(`/api/documents?size=500&_t=${Date.now()}`, { cache: "no-store" });
+      if (response.ok) {
+        const payload = (await response.json()) as { documents?: BrainDocument[]; total?: number; _source?: string; vaultAuthorized?: boolean };
+        if (payload.documents?.length) {
+          const newDocuments = ensureEmployeePaymentHistory(payload.documents);
+          setDocuments(newDocuments);
+          localStorage.setItem("documents", JSON.stringify(newDocuments));
+          return { documents: newDocuments, vaultAuthorized: !!payload.vaultAuthorized };
+        }
+      }
+    } catch (err) {
+      console.error("[EnxtBrain] Failed to load documents:", err);
+    }
+    return null;
+  };
+
   useEffect(() => {
     if (hasInitialized.current) return;
     const initializeState = async () => {
-      // 1. Restore state from localStorage
       const savedView = localStorage.getItem("activeView");
       const savedDocumentId = localStorage.getItem("selectedDocumentId");
-      const savedDocumentsRaw = localStorage.getItem("documents");
 
-      if (savedView) {
-        setActiveView(savedView as View);
-      }
-      if (savedDocumentId) {
-        setSelectedDocumentId(savedDocumentId);
-      }
+      if (savedView) setActiveView(savedView as View);
+      if (savedDocumentId) setSelectedDocumentId(savedDocumentId);
 
-      // 1a. Load cached documents from localStorage for instantaneous render
-      if (savedDocumentsRaw) {
-        try {
-          const parsed = JSON.parse(savedDocumentsRaw) as BrainDocument[];
-          if (Array.isArray(parsed) && parsed.length) {
-            setDocuments(ensureEmployeePaymentHistory(parsed));
-            const restoredDoc = parsed.find((d) => d.id === savedDocumentId) ?? parsed[0];
-            setEditText(restoredDoc.body);
-          }
-        } catch {
-          // ignore
-        }
-      }
-
-      // 2. Always fetch latest from backend
       try {
-        const response = await fetch("/api/documents");
-        if (response.ok) {
-          const payload = (await response.json()) as { documents?: BrainDocument[] };
-          if (payload.documents?.length) {
-            const newDocuments = ensureEmployeePaymentHistory(payload.documents);
-            setDocuments(newDocuments);
-            localStorage.setItem("documents", JSON.stringify(newDocuments));
-
-            const restoredDoc = newDocuments.find((d) => d.id === (selectedDocumentId || savedDocumentId));
-            if (restoredDoc) {
-              setEditText(restoredDoc.body);
-            } else if (newDocuments.length) {
-              setEditText(newDocuments[0].body);
-            }
+        const result = await fetchDocuments();
+        if (result && result.documents.length) {
+          const restoredDoc = result.documents.find((d) => d.id === savedDocumentId) ?? result.documents[0];
+          if (restoredDoc) {
+            setEditText(removeStructuredBodySection(restoredDoc.body));
           }
         }
       } catch (err) {
-        console.error("Failed to load documents from backend:", err);
+        console.error("[EnxtBrain] Failed to load documents from backend:", err);
+        // Last resort: use localStorage only if the backend is completely unreachable
+        const savedDocumentsRaw = localStorage.getItem("documents");
+        if (savedDocumentsRaw) {
+          try {
+            const parsed = JSON.parse(savedDocumentsRaw) as BrainDocument[];
+            if (Array.isArray(parsed) && parsed.length) {
+              setDocuments(ensureEmployeePaymentHistory(parsed));
+              const restoredDoc = parsed.find((d) => d.id === savedDocumentId) ?? parsed[0];
+              if (restoredDoc) setEditText(removeStructuredBodySection(restoredDoc.body));
+            }
+          } catch {
+            // ignore
+          }
+        }
       } finally {
         setHasLoadedBackendDocuments(true);
       }
@@ -643,7 +633,6 @@ export default function EnxtBrainApp() {
 
     void initializeState();
     hasInitialized.current = true;
-    // This effect should only run once. The ref prevents re-running in strict mode.
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -688,6 +677,13 @@ export default function EnxtBrainApp() {
   };
 
   useEffect(() => {
+    // Always persist to localStorage so changes survive refresh
+    try {
+      localStorage.setItem("documents", JSON.stringify(documents));
+    } catch {
+      // ignore storage errors
+    }
+
     // Persist documents to backend when available (debounced by 1500ms)
     if (hasLoadedBackendDocuments) {
       const timer = setTimeout(() => {
@@ -695,13 +691,6 @@ export default function EnxtBrainApp() {
       }, 1500);
 
       return () => clearTimeout(timer);
-    }
-
-    // Always persist to localStorage so changes survive refresh when backend is absent
-    try {
-      localStorage.setItem("documents", JSON.stringify(documents));
-    } catch {
-      // ignore storage errors
     }
   }, [documents, hasLoadedBackendDocuments]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -740,13 +729,6 @@ export default function EnxtBrainApp() {
     });
   }, [documentQuery, documents]);
 
-  useEffect(() => {
-    if (selectedDocument) {
-      setEditText(selectedDocument.body);
-    } else {
-      setEditText("");
-    }
-  }, [selectedDocument]);
 
   const executeBrainQuery = async (promptText: string) => {
     const prompt = promptText.trim();
@@ -801,7 +783,7 @@ export default function EnxtBrainApp() {
       setIsBrainThinking(false);
     }
 
-    if (writeMode && /\b(update|change|edit|mark|move|set|add|revise)\b/i.test(prompt)) {
+    if (writeMode && /\b(update|change|edit|mark|move|set|revise)\b/i.test(prompt)) {
       const target = findTargetDocument(prompt, documents);
 
       if (target) {
@@ -868,7 +850,22 @@ export default function EnxtBrainApp() {
         monthlySalaryInr: salaryInputToNumber(fields.currentSalaryRaw || "0"),
         paymentHistory: normalizePaymentHistory(fields.paymentHistory)
       },
-      body: `New employee record created from Enxt Brain on ${createdAt}.`
+      body: `New employee record created from Enxt Brain on ${createdAt}.
+
+Name: ${fields.name || "New Employee"}
+Status: ${status}
+Date of joining: ${fields.dateOfJoining || createdAt}
+Date of leaving: Still active
+Current salary: ${fields.currentSalaryRaw || "Not provided"}
+
+Document references:
+- Offer letter: Missing
+- PAN card: Missing
+- Aadhaar card: Missing
+- Bank details: Missing
+
+Payment records:
+- No payment history recorded yet.`
     };
 
     setDocuments((current) => [employee, ...current]);
@@ -902,7 +899,10 @@ export default function EnxtBrainApp() {
         risk: fields.risk || "Not assessed yet.",
         dataSources: fields.dataSources || ""
       },
-      body: `Objective: ${fields.objective || "Define the project objective."}
+      body: ""
+    };
+
+    project.body = buildStructuredBody(project, `Objective: ${fields.objective || "Define the project objective."}
 
 Scope: ${fields.scope || "Add scope notes."}
 
@@ -910,8 +910,7 @@ Data Sources: ${fields.dataSources || "Not yet defined."}
 
 Current status: ${fields.currentStatus || "Not yet started."}
 
-Success metric: ${fields.successMetric || "Add measurable success criteria."}`
-    };
+Success metric: ${fields.successMetric || "Add measurable success criteria."}`, project.fields);
 
     setDocuments((current) => [project, ...current]);
     setSelectedDocumentId(project.id);
@@ -952,7 +951,18 @@ Success metric: ${fields.successMetric || "Add measurable success criteria."}`
         owner: "Founder",
         source: "Portal"
       },
-      body: `New lead created from Enxt Brain on ${createdAt}.`
+      body: `New lead created from Enxt Brain on ${createdAt}.
+
+Company: ${company}
+Contact Person: ${fields.contactPerson || "Not provided"}
+Stage: ${selectedStage}
+Contract Value: ${fields.contractValue || "Not specified"}
+Potential Value INR: ${potentialValueInr}
+
+Communication Status: ${fields.communicationStatus || "No recent updates"}
+Next Steps: ${fields.nextSteps || "To be defined"}
+Deadline: ${fields.deadline || "No deadline set"}
+Last Communication Date: ${createdAt}`
     };
 
     setDocuments((current) => [lead, ...current]);
@@ -973,8 +983,10 @@ Success metric: ${fields.successMetric || "Add measurable success criteria."}`
       fields: {
         source: "Portal"
       },
-      body: "New document notes."
+      body: ""
     };
+
+    document.body = buildStructuredBody(document, "New document notes.", document.fields);
 
     setDocuments((current) => [document, ...current]);
     setSelectedDocumentId(document.id);
@@ -1024,11 +1036,11 @@ Success metric: ${fields.successMetric || "Add measurable success criteria."}`
           status,
           updatedStipendRaw: "",
           oldStipendRaw: "",
-          offerLetterStatus: (fields.offerLetter as string).trim() ? "Available" : "Missing",
-          panCardStatus: (fields.panCard as string).trim() ? "Available" : "Missing",
-          aadhaarCardStatus: (fields.aadhaarCard as string).trim() ? "Available" : "Missing",
-          bankDetailsStatus: (fields.bankDetails as string).trim() ? "Available" : "Missing",
-          bankDetailsDisplay: (fields.bankDetails as string).trim() ? "Captured from portal - protected" : "",
+          offerLetterStatus: (fields.offerLetter as string ?? "").trim() ? "Available" : "Missing",
+          panCardStatus: (fields.panCard as string ?? "").trim() ? "Available" : "Missing",
+          aadhaarCardStatus: (fields.aadhaarCard as string ?? "").trim() ? "Available" : "Missing",
+          bankDetailsStatus: (fields.bankDetails as string ?? "").trim() ? "Available" : "Missing",
+          bankDetailsDisplay: (fields.bankDetails as string ?? "").trim() ? "Captured from portal - protected" : "",
           offerLetterUrl: fields.offerLetterUrl as string,
           panCardUrl: fields.panCardUrl as string,
           aadhaarCardUrl: fields.aadhaarCardUrl as string,
@@ -1220,6 +1232,13 @@ Success metric: ${fields.successMetric || "Add measurable success criteria."}`
     setChangeRequests((current) =>
       current.map((item) => (item.id === change.id ? { ...item, status: "applied" } : item))
     );
+
+    // Trigger an immediate sync to Firestore after an AI change — don't wait for the 1.5s debounce.
+    // This ensures that if the page reloads (e.g. dev hot-reload) within the debounce window,
+    // the change is already persisted to Firestore and won't be lost.
+    setTimeout(() => {
+      triggerSync(latestDocsRef.current);
+    }, 50);
   };
 
   const rejectChange = (change: ChangeRequest) => {
@@ -1272,11 +1291,11 @@ Success metric: ${fields.successMetric || "Add measurable success criteria."}`
             <ShieldCheck size={17} aria-hidden="true" />
             <span>Approval write flow</span>
           </div>
-          <div 
-            className="sidebar-row" 
-            style={{ 
-              marginTop: "4px", 
-              cursor: syncStatus === "error" ? "pointer" : "default" 
+          <div
+            className="sidebar-row"
+            style={{
+              marginTop: "4px",
+              cursor: syncStatus === "error" ? "pointer" : "default"
             }}
             onClick={() => {
               if (syncStatus === "error") {
@@ -1313,11 +1332,6 @@ Success metric: ${fields.successMetric || "Add measurable success criteria."}`
               </>
             )}
           </div>
-          <style jsx global>{`
-            @keyframes spin {
-              to { transform: rotate(360deg); }
-            }
-          `}</style>
         </div>
       </aside>
 
@@ -1371,6 +1385,7 @@ Success metric: ${fields.successMetric || "Add measurable success criteria."}`
                 onAddEmployee={addEmployee}
                 onDeleteDocuments={deleteDocuments}
                 onUpdateEmployee={updateEmployee}
+                onReloadDocuments={fetchDocuments}
               />
             )}
 
@@ -1622,13 +1637,15 @@ function EmployeesView({
   monthlyPayroll,
   onAddEmployee,
   onDeleteDocuments,
-  onUpdateEmployee
+  onUpdateEmployee,
+  onReloadDocuments
 }: {
   employees: BrainDocument[];
   monthlyPayroll: number;
   onAddEmployee: (fields: EmployeeEditState) => void;
   onDeleteDocuments: (documentIds: string[]) => void;
   onUpdateEmployee: (employeeId: string, fields: EmployeeEditState) => void;
+  onReloadDocuments: () => Promise<any>;
 }) {
   const [editingEmployeeId, setEditingEmployeeId] = useState<string | null>(null);
   const [isAddingEmployee, setIsAddingEmployee] = useState(false);
@@ -1639,6 +1656,13 @@ function EmployeesView({
   const [documentFilter, setDocumentFilter] = useState("All");
   const [paymentDate, setPaymentDate] = useState(todayIsoDate());
   const [paymentSalary, setPaymentSalary] = useState("");
+  const [vaultPasswordInput, setVaultPasswordInput] = useState("");
+  const [isVaultAuthorized, setIsVaultAuthorized] = useState(() => {
+    if (typeof window !== "undefined") {
+      return sessionStorage.getItem("vault_auth") === "true";
+    }
+    return false;
+  });
   const editingEmployee = employees.find((employee) => employee.id === editingEmployeeId);
   const activeCount = employees.filter((employee) => asText(employee, "status") === "Active").length;
   const exitedCount = employees.filter((employee) => asText(employee, "status") === "Exited").length;
@@ -1922,7 +1946,7 @@ function EmployeesView({
                 <button className="icon-button" onClick={() => {
                   setEditingEmployeeId(null);
                   setIsAddingEmployee(false);
-                  }} title="Close employee form" type="button">
+                }} title="Close employee form" type="button">
                   <X size={18} aria-hidden="true" />
                 </button>
               </div>
@@ -1998,7 +2022,7 @@ function EmployeesView({
                   <button className="secondary-button" onClick={() => {
                     setEditingEmployeeId(null);
                     setIsAddingEmployee(false);
-                    }} type="button">
+                  }} type="button">
                     Cancel
                   </button>
                   {!isAddingEmployee && editingEmployee && (
@@ -2025,58 +2049,129 @@ function EmployeesView({
           </div>
           <FileText size={18} aria-hidden="true" />
         </div>
-        <div className="document-vault-grid">
-          {filteredEmployees.map((employee) => (
-            <article className="doc-vault-card" key={`${employee.id}-docs`}>
-              <div className="doc-vault-header">
-                <strong>{asText(employee, "name")}</strong>
-                <StatusBadge tone={asText(employee, "status") === "Exited" ? "amber" : "green"}>
-                  {asText(employee, "status")}
-                </StatusBadge>
-              </div>
-              <DocumentReference
-                employeeId={employee.id}
-                employeeName={asText(employee, "name")}
-                label="Offer"
-                fieldKey="offerLetterUrl"
-                onView={setViewedDocument}
-                status={asText(employee, "offerLetterStatus")}
-                url={asText(employee, "offerLetterUrl")}
-                value={asText(employee, "offerLetter")}
+
+        {!isVaultAuthorized ? (
+          <div className="vault-auth-box" style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "40px 20px",
+            textAlign: "center",
+            background: "rgba(255, 255, 255, 0.03)",
+            border: "1px dashed rgba(255, 255, 255, 0.1)",
+            borderRadius: "12px",
+            margin: "20px 0"
+          }}>
+            <Lock size={32} style={{ marginBottom: "12px", opacity: 0.6 }} />
+            <h4 style={{ marginBottom: "8px", fontSize: "16px" }}>Vault is Locked</h4>
+            <p style={{ fontSize: "13px", opacity: 0.7, marginBottom: "16px", maxWidth: "320px" }}>
+              Please enter the portal authorization password to unlock private employee document vault.
+            </p>
+            <form 
+              onSubmit={async (e) => {
+                e.preventDefault();
+                try {
+                  const res = await fetch("/api/documents/auth", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ password: vaultPasswordInput })
+                  });
+                  if (res.ok) {
+                    setIsVaultAuthorized(true);
+                    sessionStorage.setItem("vault_auth", "true");
+                    setVaultPasswordInput("");
+                    // Reload document payload from server (which will now include unmasked sensitive data)
+                    await onReloadDocuments();
+                  } else {
+                    const data = await res.json();
+                    alert(data.error || "Incorrect vault password.");
+                  }
+                } catch (err) {
+                  console.error("Vault unlock failed:", err);
+                  alert("Failed to connect to the authentication server.");
+                }
+              }}
+              style={{ display: "flex", gap: "8px", width: "100%", maxWidth: "300px" }}
+            >
+              <input
+                type="password"
+                placeholder="Enter password..."
+                value={vaultPasswordInput}
+                onChange={(e) => setVaultPasswordInput(e.target.value)}
+                style={{
+                  flex: 1,
+                  padding: "8px 12px",
+                  borderRadius: "6px",
+                  border: "1px solid rgba(255, 255, 255, 0.15)",
+                  background: "rgba(0, 0, 0, 0.2)",
+                  color: "#fff",
+                  fontSize: "13px"
+                }}
               />
-              <DocumentReference
-                employeeId={employee.id}
-                employeeName={asText(employee, "name")}
-                label="PAN"
-                fieldKey="panCardUrl"
-                onView={setViewedDocument}
-                status={asText(employee, "panCardStatus")}
-                url={asText(employee, "panCardUrl")}
-                value={asText(employee, "panCard")}
-              />
-              <DocumentReference
-                employeeId={employee.id}
-                employeeName={asText(employee, "name")}
-                label="Aadhaar"
-                fieldKey="aadhaarCardUrl"
-                onView={setViewedDocument}
-                status={asText(employee, "aadhaarCardStatus")}
-                url={asText(employee, "aadhaarCardUrl")}
-                value={asText(employee, "aadhaarCard")}
-              />
-              <DocumentReference
-                employeeId={employee.id}
-                employeeName={asText(employee, "name")}
-                label="Bank"
-                fieldKey="bankDetailsUrl"
-                onView={setViewedDocument}
-                status={asText(employee, "bankDetailsStatus")}
-                url={asText(employee, "bankDetailsUrl")}
-                value={asText(employee, "bankDetailsDisplay")}
-              />
-            </article>
-          ))}
-        </div>
+              <button 
+                type="submit"
+                className="primary-button"
+                style={{ padding: "8px 16px", fontSize: "13px" }}
+              >
+                Unlock
+              </button>
+            </form>
+          </div>
+        ) : (
+          <div className="document-vault-grid">
+            {filteredEmployees.map((employee) => (
+              <article className="doc-vault-card" key={`${employee.id}-docs`}>
+                <div className="doc-vault-header">
+                  <strong>{asText(employee, "name")}</strong>
+                  <StatusBadge tone={asText(employee, "status") === "Exited" ? "amber" : "green"}>
+                    {asText(employee, "status")}
+                  </StatusBadge>
+                </div>
+                <DocumentReference
+                  employeeId={employee.id}
+                  employeeName={asText(employee, "name")}
+                  label="Offer"
+                  fieldKey="offerLetterUrl"
+                  onView={setViewedDocument}
+                  status={asText(employee, "offerLetterStatus")}
+                  url={asText(employee, "offerLetterUrl")}
+                  value={asText(employee, "offerLetter")}
+                />
+                <DocumentReference
+                  employeeId={employee.id}
+                  employeeName={asText(employee, "name")}
+                  label="PAN"
+                  fieldKey="panCardUrl"
+                  onView={setViewedDocument}
+                  status={asText(employee, "panCardStatus")}
+                  url={asText(employee, "panCardUrl")}
+                  value={asText(employee, "panCard")}
+                />
+                <DocumentReference
+                  employeeId={employee.id}
+                  employeeName={asText(employee, "name")}
+                  label="Aadhaar"
+                  fieldKey="aadhaarCardUrl"
+                  onView={setViewedDocument}
+                  status={asText(employee, "aadhaarCardStatus")}
+                  url={asText(employee, "aadhaarCardUrl")}
+                  value={asText(employee, "aadhaarCard")}
+                />
+                <DocumentReference
+                  employeeId={employee.id}
+                  employeeName={asText(employee, "name")}
+                  label="Bank"
+                  fieldKey="bankDetailsUrl"
+                  onView={setViewedDocument}
+                  status={asText(employee, "bankDetailsStatus")}
+                  url={asText(employee, "bankDetailsUrl")}
+                  value={asText(employee, "bankDetailsDisplay")}
+                />
+              </article>
+            ))}
+          </div>
+        )}
       </div>
 
       {viewedDocument && <EmployeeDocumentViewer document={viewedDocument} onClose={() => setViewedDocument(null)} />}
@@ -2139,11 +2234,25 @@ function DocumentReference({
 }) {
   const available = status === "Available";
 
+  // Detect if value is still an AES-CBC encrypted string (iv:encryptedHex format).
+  // This happens when Firestore has stale encrypted data and decryption failed server-side
+  // (e.g. key rotation). We never want to show raw hex in the vault.
+  const isEncryptedHex = (v: string) =>
+    typeof v === "string" && /^[0-9a-f]{32}:[0-9a-f]{32,}/i.test(v.trim());
+
+  const cleanValue = isEncryptedHex(value) ? "" : value;
+
+  const displayValue = available
+    ? cleanValue.length > 32
+      ? cleanValue.slice(0, 30) + "…"
+      : cleanValue || "File on record"
+    : "—";
+
   return (
     <div className="doc-ref-row">
       <span>{label}</span>
       <strong className={available ? "available" : "missing"}>{status || "Missing"}</strong>
-      <small>{available ? value : "No document reference in sheet"}</small>
+      <small title={available ? value : undefined}>{displayValue}</small>
       <button
         className="doc-view-button"
         disabled={!available}
@@ -2165,13 +2274,10 @@ function EmployeeDocumentViewer({
   document: ViewedEmployeeDocument;
   onClose: () => void;
 }) {
-  const isProtected = document.url === "[PROTECTED]";
-  const previewUrl = isProtected
-    ? `/api/documents/view?id=${document.employeeId}&field=${document.fieldKey}&preview=true`
-    : getPreviewUrl(document.url);
-  const originalUrl = isProtected
-    ? `/api/documents/view?id=${document.employeeId}&field=${document.fieldKey}`
-    : document.url;
+  // Always force document preview and original URLs to go through secure API endpoint, requiring vault password authentication.
+  const authToken = process.env.NEXT_PUBLIC_VAULT_PASSWORD || "inext";
+  const previewUrl = `/api/documents/view?id=${document.employeeId}&field=${document.fieldKey}&preview=true&auth=${authToken}`;
+  const originalUrl = `/api/documents/view?id=${document.employeeId}&field=${document.fieldKey}&auth=${authToken}`;
 
   return (
     <Portal>
@@ -2196,10 +2302,11 @@ function EmployeeDocumentViewer({
           ) : (
             <div className="document-preview-box">
               <FileText size={42} aria-hidden="true" />
-              <strong>{document.value}</strong>
+              <strong>{document.value || "File on record"}</strong>
               <p>
-                This record has a filename from the sheet, but no real file URL yet. Edit the employee and paste the
-                Google Drive sharing link into the matching URL field.
+                {document.value === "File on record" || !document.value
+                  ? "This document's reference value was stored encrypted with an old/stale key and could not be decrypted. Please edit this employee to re-upload or update their document name and URL."
+                  : "This record has a filename from the sheet, but no real file URL yet. Edit the employee and paste the Google Drive sharing link into the matching URL field."}
               </p>
             </div>
           )}
@@ -2385,7 +2492,7 @@ function ProjectsView({
                         ))}
                       </select>
                     </td>
-                     <td>
+                    <td>
                       <div className="health-container">
                         <span className={`health-pulse ${asText(project, "health").toLowerCase()}`} />
                         <span style={{ fontSize: "0.85rem", fontWeight: 500 }}>{asText(project, "health")}</span>
@@ -2435,7 +2542,7 @@ function ProjectsView({
                 <button className="icon-button" onClick={() => {
                   setIsAddingProject(false);
                   setEditingProjectId(null);
-                  }} title="Close project form" type="button">
+                }} title="Close project form" type="button">
                   <X size={18} aria-hidden="true" />
                 </button>
               </div>
@@ -2466,7 +2573,7 @@ function ProjectsView({
                   <button className="secondary-button" onClick={() => {
                     setIsAddingProject(false);
                     setEditingProjectId(null);
-                    }} type="button">
+                  }} type="button">
                     Cancel
                   </button>
                   <button className="primary-button" onClick={saveProject} type="button">
@@ -2994,7 +3101,12 @@ function DocumentsView({
               <span key={tag}>{tag}</span>
             ))}
           </div>
-          <textarea aria-label="Document body" onChange={(event) => onEditText(event.target.value)} value={editText} />
+          <textarea
+            aria-label="Document body"
+            onChange={(event) => onEditText(event.target.value)}
+            value={editText}
+            placeholder="Write notes, context, or any free-form content here…"
+          />
           <div className="editor-footer">
             <span>Owner: {selectedDocument.owner}</span>
             <div className="editor-actions">

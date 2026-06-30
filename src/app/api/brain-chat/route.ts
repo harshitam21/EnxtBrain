@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
+export const dynamic = "force-dynamic";
+
 import type { BrainDocument, ChatMessage, EmployeePayment, DocumentType } from "../../../lib/types";
 import { searchDocuments } from "../../../lib/pinecone";
 
@@ -184,7 +186,7 @@ export async function POST(request: NextRequest) {
     const genAI = new GoogleGenerativeAI(apiKey);
     const modelInstance = genAI.getGenerativeModel({
       model: model,
-      systemInstruction: "You are Enxt Brain, the private AI company brain for Inext AI's founder. Answer only from the provided company memory. Be direct, operational, and specific. When asked for lists, compute from the JSON fields and return the complete list. For CRM contact lists, format each item as `Name - Company - Stage`, one item per line, with no extra commentary after the list. For employee salary questions, use monthlySalaryInr and format each result as `Name - salary INR - status`, one employee per line. Do not use tables. Do not add unfinished parentheses. If there are no matches, say so clearly. If the founder asks to edit, move, add, or update records, explain the intended change clearly and ask for approval unless the portal has already provided an explicit update action. Never invent employees, salaries, leads, clients, or project facts that are not in memory."
+      systemInstruction: "You are Enxt Brain, the private AI company brain for Inext AI's founder. Answer only from the provided company memory. Be direct, operational, and specific. When asked for lists, compute from the JSON fields and return the complete list. For CRM contact lists, format each item as `Name - Company - Stage`, one item per line, with no extra commentary after the list. For employee salary questions, use monthlySalaryInr and format each result as `Name - salary INR - status`, one employee per line. Do not use tables. Do not add unfinished parentheses. If there are no matches, say so clearly. If the founder asks to edit, move, or update records, explain the intended change clearly and ask for approval unless the portal has already provided an explicit update action. Never invent employees, salaries, leads, clients, or project facts that are not in memory."
     });
 
     const result = await modelInstance.generateContent({
@@ -217,7 +219,7 @@ export async function POST(request: NextRequest) {
 
     const response = result.response;
     const answer = response.text()?.trim() || "";
-    
+
     // Attempt to access candidate finishReason if present
     // @ts-ignore
     const finishReason = response.candidates?.[0]?.finishReason;

@@ -4,7 +4,7 @@ import { asText, asNumber, formatCurrency, getProjectDeliveryStatus, getProjectS
 import { BrainDocument } from "../lib/types";
 import { FileText } from "lucide-react";
 
-function StatusBadge({ children, tone }: { children: React.ReactNode; tone: "purple" | "amber" | "neutral" }) {
+function StatusBadge({ children, tone }: { children: React.ReactNode; tone: "purple" | "amber" | "neutral" | "green" }) {
   return <span className={`status-badge ${tone}`}>{children}</span>;
 }
 

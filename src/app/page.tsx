@@ -1,5 +1,5 @@
 import EnxtBrainApp from "../components/enxt-brain-app";
 
-export default function Home() {
+export default function HomePage() {
   return <EnxtBrainApp />;
 }

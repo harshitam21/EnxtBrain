@@ -1,12 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getFirestoreClient } from "../../../../lib/firebase-admin";
 import { decrypt } from "../../../../lib/encryption";
-import { withAuth } from "../../../../lib/auth";
+// Authentication disabled – no wrapper needed
 
-export const GET = withAuth(async (request: NextRequest, _res: any, _user) => {
+import jwt from "jsonwebtoken";
+
+export const GET = async (request: NextRequest) => {
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
   const field = searchParams.get("field");
+
+  // Validate the HTTP-only vault_auth_token cookie
+  const cookieToken = request.cookies.get("vault_auth_token")?.value;
+  if (!cookieToken) {
+    return NextResponse.json({ error: "Unauthorized. Vault login session required." }, { status: 401 });
+  }
+
+  try {
+    const secret = process.env.JWT_SECRET || "default_jwt_vault_secret";
+    jwt.verify(cookieToken, secret);
+  } catch (err) {
+    return NextResponse.json({ error: "Unauthorized. Invalid vault session." }, { status: 401 });
+  }
 
   if (!id || !field) {
     return NextResponse.json({ error: "Missing id or field parameter." }, { status: 400 });
@@ -54,4 +69,4 @@ export const GET = withAuth(async (request: NextRequest, _res: any, _user) => {
     console.error("View redirect error:", error);
     return NextResponse.json({ error: "Internal server error." }, { status: 500 });
   }
-}, ["admin", "founder"]);
+};
